@@ -16,7 +16,7 @@ class AttributeDict (dict):
         try:
             return self[name]
         except KeyError:
-            raise AttributeError, "No attribute %s" % name
+            raise (AttributeError, f"No attribute {name}")
 
     def __setattr__(self, name, value):
         "Convert an attribute set into a key set."
@@ -27,7 +27,7 @@ class AttributeDict (dict):
         try:
             del self[name]
         except KeyError:
-            raise AttributeError, 'No attribute %s' % name
+            raise (AttributeError, f'No attribute {name}')
         
     def __repr__(self):
         out = StringIO()

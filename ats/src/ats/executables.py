@@ -14,8 +14,7 @@ class Executable(object):
 
     def is_valid(self):
         "Is this executable valid?"
-        if not self.path: return False
-        return is_valid_executable(self.path)
+        return is_valid_executable(self.path) if self.path else False
 
     def __str__ (self):
         return " ".join(self.commandList)

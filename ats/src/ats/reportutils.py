@@ -77,30 +77,28 @@ def atsrToJUnit(atsrFile=None,junitOut=None,build=True ):
         atsrFile = './atsr.py'
     state = getStateFromFile(atsrFile)
     passed,failed,timedout,skipped,filtered,invalid,running = getTestStatusLists(state.testlist)
-    outf = open(junitOut,'w')
-    # Start the xml file with needed tags 
-    outf.write('<?xml version="1.0" encoding="UTF-8"?> <testsuites>')
-    outf.write('    <testsuite name="nightly">')
-    writePassedBuild(outf)
-    for test in passed:
-        writePassedTestCase(outf,test)
-    for test in failed:
-        # You need the log dir in order to dump the .err output into the xml
-        errlogpath = os.path.dirname(atsrFile)
-        writeFailedCodeTestCase(outf,test,errlogpath)
+    with open(junitOut,'w') as outf:
+        # Start the xml file with needed tags 
+        outf.write('<?xml version="1.0" encoding="UTF-8"?> <testsuites>')
+        outf.write('    <testsuite name="nightly">')
+        writePassedBuild(outf)
+        for test in passed:
+            writePassedTestCase(outf,test)
+        for test in failed:
+            # You need the log dir in order to dump the .err output into the xml
+            errlogpath = os.path.dirname(atsrFile)
+            writeFailedCodeTestCase(outf,test,errlogpath)
 
-    # Finish off the xml file
-    outf.write('    </testsuite>')
-    outf.write("</testsuites>")
-    outf.close()
+        # Finish off the xml file
+        outf.write('    </testsuite>')
+        outf.write("</testsuites>")
 
 
 def cleanTestCaseName( test ):
     '''Remove all special chars from the name so it's readable to junit parser.  '''
     import re
     pattern = re.compile('([^\s\w]|_)+')
-    testname = pattern.sub('', test.name)
-    return testname
+    return pattern.sub('', test.name)
 
 def cleanErrorMessage( msg ):
     '''Converts the text from ats .err files to strings parsable by Bamboo from within the junit.xml format. '''
@@ -116,21 +114,16 @@ def writeFailedCodeTestCase( f, test, err_path):
     cname = test.name.replace('&','and')
     testname = cleanTestCaseName(test)
     f.write('    <testcase status="run" time="%.3f" classname="%s" name="%s" >\n' % (elapsedTime(test), cname, testname) )
-    # Write error message:
-    # Invalid chars in the .err logs cause parse errors in Bamboo (xml parse errors - not Bamboo errors)
-    #  so we need to handle xml special chars before writing
-    logferr = open(glob.glob(err_path+'/*'+str(test.serialNumber)+'*.log.err')[0],'r')
-    rawmsg = logferr.read() # not readlines() - there are standard xml escapes to fix, we don't want to iterate over the whole message.
-    msg = "***** ats log.err file: *****\nTesting branch installation\n"
-    msg += cleanErrorMessage( rawmsg )
-    msg += "***** END ats log.err file: *****\n\n"
-    logferr.close()
-    logf = open(glob.glob(err_path+'/*'+str(test.serialNumber)+'*.log')[0],'r')
-    rawmsg = logf.read()
-    msg += "***** ats .log file: *****\n running from clone code \n"
-    msg += cleanErrorMessage( rawmsg )
-    msg += "***** END ats log.err file: *****\n"
-    logf.close()
+    with open(glob.glob(f'{err_path}/*{str(test.serialNumber)}*.log.err')[0], 'r') as logferr:
+        rawmsg = logferr.read() # not readlines() - there are standard xml escapes to fix, we don't want to iterate over the whole message.
+        msg = "***** ats log.err file: *****\nTesting branch installation\n"
+        msg += cleanErrorMessage( rawmsg )
+        msg += "***** END ats log.err file: *****\n\n"
+    with open(glob.glob(f'{err_path}/*{str(test.serialNumber)}*.log')[0], 'r') as logf:
+        rawmsg = logf.read()
+        msg += "***** ats .log file: *****\n running from clone code \n"
+        msg += cleanErrorMessage( rawmsg )
+        msg += "***** END ats log.err file: *****\n"
     f.write('      <failure type="%s"> %s </failure>\n' % (test.status, msg))
     f.write('    </testcase>\n')
 

@@ -16,19 +16,16 @@ class UsageError(StandardError):
         super(UsageError, self).__init__()
         self.message = message
     def __str__(self):
-        return 'Usage error.  %s' % self.message
+        return f'Usage error.  {self.message}'
 
 class CommandRunner(object):
     """Shell command implementation base class"""
 
-    def __init__(self, logger=None, effort_only=False) :
+    def __init__(self, logger=None, effort_only=False):
         """Initializes the instance variables associated with the class
         """
         self.effort_only = effort_only
-        if logger is None:
-            self._logger=logs.getLogger('root')
-        else:
-            self._logger=logger
+        self._logger = logs.getLogger('root') if logger is None else logger
 
     def issueCommand(self, args) :
         """Issue the command associated with the given Popen arguments list.
@@ -56,7 +53,7 @@ class CommandRunner(object):
                     raise
         return Output_Stream
 
-    def issueFirstCommand(self, commandList, argList) :
+    def issueFirstCommand(self, commandList, argList):
         """Issues the first command found in commandList, using the
         arguments in argList.
 
@@ -68,8 +65,7 @@ class CommandRunner(object):
             if os.path.isfile(command):
                 return self.issueCommand ([command,] + argList)
             self._logger.debug('Command "%s" not found.' % command)
-        message = 'Execution of command failed.  None of %s found.' % \
-                  str(commandList)
+        message = f'Execution of command failed.  None of {str(commandList)} found.'
         raise UsageError(message)
 
 

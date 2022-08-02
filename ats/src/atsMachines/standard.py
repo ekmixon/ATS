@@ -53,12 +53,12 @@ class WinMachine (machines.Machine):
         # Grab option values.    
         super(WinMachine, self).examineOptions(options)
         self.npMax= self.numberTestsRunningMax
-        
+
         import os
         if options.numNodes==-1:
             if os.environ.has_key('NUMBER_OF_PROCESSORS'):
                 options.numNodes= int(os.environ['NUMBER_OF_PROCESSORS'])
-               
+
             else:
                 options.numNodes= 1
         self.numNodes= options.numNodes
@@ -107,19 +107,13 @@ class WinMachine (machines.Machine):
     
     def noteLaunch(self, test):
         """A test has been launched."""
-        if self.nompi : self.numProcsAvailable -= 1
-        else :
-            np = max(test.np, 1)
-            self.numProcsAvailable -= np
+        self.numProcsAvailable -= 1 if self.nompi else max(test.np, 1)
         
         
         
     def noteEnd(self, test):
         """A test has finished running. """
-        if self.nompi : self.numProcsAvailable += 1
-        else :
-            np = max(test.np, 1)
-            self.numProcsAvailable += np
+        self.numProcsAvailable += 1 if self.nompi else max(test.np, 1)
         
     def periodicReport(self): 
         "Report on current status of tasks"

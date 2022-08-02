@@ -79,9 +79,17 @@ class ScopeLoggers(logging.LoggerAdapter):
     def __init__(self, logger, callerContext, parms=""):
         """Log caller entry at creation time and indent"""
         logging.LoggerAdapter.__init__(self, logger, extra=None)
-        self.caller = (callerContext + '.' +
-                       inspect.currentframe().f_back.f_code.co_name +
-                       '(' + parms + ')')
+        self.caller = (
+            (
+                (
+                    f'{callerContext}.'
+                    + inspect.currentframe().f_back.f_code.co_name
+                )
+                + '('
+            )
+            + parms
+        ) + ')'
+
         self.debug((self.__class__._indent * ' ') + '=> ' + self.caller + ' BEGIN')
         self.__class__._indent += 1
         # For debugging this module:
@@ -127,7 +135,7 @@ def demoScopeLogger(logger):
     _scopeLogger = ScopeLoggers(logger, __name__)
     localLogger = getLogger(__name__)
     localLogger.setLevel(DEBUG)
-    localLogger.debug ("Inside " + inspect.currentframe().f_code.co_name)
+    localLogger.debug(f"Inside {inspect.currentframe().f_code.co_name}")
 
 def demoScopeLoggerParms(logger):
     print("")
@@ -200,7 +208,10 @@ def demoDebugFields():
 #  not within pprint
 #     instance1.field5 = instance1
     logger.debug('instance1 __repr__()output: %r' % instance1)
-    logger.debug('instance1 pformat output: %s' % pprint.PrettyPrinter().pformat(instance1))
+    logger.debug(
+        f'instance1 pformat output: {pprint.PrettyPrinter().pformat(instance1)}'
+    )
+
     instance1.setIndent(4)
     logger.info ("instance1 indented output: %r" % instance1)
 

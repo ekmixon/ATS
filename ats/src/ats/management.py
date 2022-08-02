@@ -11,10 +11,7 @@ from log import log, terminal
 
 def standardIntrospection(line):
     "Standard magic detector for input."
-    if line.startswith("#ATS:"):
-        return line[5:]
-    else:
-        return None
+    return line[5:] if line.startswith("#ATS:") else None
 
 def areBrothers(t1, t2):
     "are two tests part of a set of related tests?"
@@ -65,7 +62,7 @@ Attributes:
         self.continuationFileName = ''
         self.saveResultsName = "atsr.py"
         self.saveXmlResultsName = "atsr.xml"
-        
+
         AtsTest.restart()
 
     def filter (self, *filters):
@@ -154,9 +151,9 @@ Attributes:
         "Define symbols for input files."
         testEnvironment.update(definitions)
 
-    def undefine(*args):
+    def undefine(self):
         "Remove one or more symbols for input files."
-        for x in args:
+        for x in self:
             if testEnvironment.has_key(x):
                 del testEnvironment[x]
 
@@ -166,8 +163,7 @@ Attributes:
         if testEnvironment.has_key(name):
             return testEnvironment.get(name)
 
-        raise AtsError, \
-            "Could not find name %s in vocabulary." % name   
+        raise (AtsError, f"Could not find name {name} in vocabulary.")   
         
     alreadysourced = []
 
@@ -332,29 +328,27 @@ ATS SUMMARY %s""" % datestamp(long=1), echo = True)
         """
         return;
 
-    def report (self):
+    def report(self):
         "Log a report, showing each test."
         doAll = debug() or \
-               configuration.options.skip or \
-               configuration.options.verbose
+                   configuration.options.skip or \
+                   configuration.options.verbose
 
-        outputCaptured = False
-        for test in self.testlist:
-            if test.output:
-                outputCaptured = True
-
+        outputCaptured = any(test.output for test in self.testlist)
         if outputCaptured and not configuration.options.hideOutput:
             log("NOTICE:", "Captured output, see log.", echo=True, logging = False)
 
         for test in self.testlist:
-            if doAll or test.notes or test.groupSerialNumber ==1 or \
-                test.group.echoStatus() or test.options.get('record', False): 
-                echo = True
-            else:
-                echo = False
+            echo = bool(
+                doAll
+                or test.notes
+                or test.groupSerialNumber == 1
+                or test.group.echoStatus()
+                or test.options.get('record', False)
+            )
 
             log("#%d %s %s %s (Group %d #%d)" % \
-                   (test.serialNumber, test.status, test.name, test.message,
+                       (test.serialNumber, test.status, test.name, test.message,
                     test.group.number, test.groupSerialNumber),
                     echo=echo)
 
@@ -366,16 +360,21 @@ ATS SUMMARY %s""" % datestamp(long=1), echo = True)
                 log([t.serialNumber for t in test.waitUntil], echo=False)
             log.dedent()
 
-    def summary (self, log):
+    def summary(self, log):
         "Log summary of the results."
         tlist = [t for t in self.testlist if t.options.get('report', True)]
         failed = [test.name for test in self.testlist if (test.status is FAILED)]
         timedout = [test.name for test in self.testlist if (test.status is TIMEDOUT)]
         ncs = [test for test in self.testlist \
-             if (test.status is PASSED and test.options.get('check', False))]
+                 if (test.status is PASSED and test.options.get('check', False))]
         passed = [test.name for test in tlist \
-                  if (test.status is PASSED and test not in ncs)]
-        running = [' '.join(['#'+ str(test.serialNumber),test.name]) for test in self.testlist if (test.status is RUNNING)]
+                      if (test.status is PASSED and test not in ncs)]
+        running = [
+            ' '.join([f'#{str(test.serialNumber)}', test.name])
+            for test in self.testlist
+            if (test.status is RUNNING)
+        ]
+
         halted = [test.name for test in self.testlist if (test.status is HALTED)]
         lsferror = [test.name for test in self.testlist if (test.status is LSFERROR)]
         expected = [test.name for test in self.testlist if (test.status is EXPECTED)]
@@ -390,10 +389,12 @@ CHECK:    %d %s""" % (len(ncs), ', '.join([test.name for test in ncs])),
                echo = True)
 
         msg = ""
-        if (len(failed) == 0):
-            msg = "FAILED:  0"
-        else:
-            msg = "FAILED:  %d %s" % (len(failed), ', '.join(failed))
+        msg = (
+            "FAILED:  %d %s" % (len(failed), ', '.join(failed))
+            if failed
+            else "FAILED:  0"
+        )
+
         log(msg, echo = True)
 
         if timedout:
@@ -451,46 +452,37 @@ CHECK:    %d %s""" % (len(ncs), ', '.join([test.name for test in ncs])),
         halted =   [test.name for test in self.testlist if (test.status is HALTED)]
         lsferror = [test.name for test in self.testlist if (test.status is LSFERROR)]
         expected = [test.name for test in self.testlist if (test.status is EXPECTED)]
-        running = [' '.join(['#'+ str(test.serialNumber),test.name]) for test in self.testlist if (test.status is RUNNING)]
+        running = [
+            ' '.join([f'#{str(test.serialNumber)}', test.name])
+            for test in self.testlist
+            if (test.status is RUNNING)
+        ]
+
         ncs = [test for test in self.testlist  if (test.status is PASSED and test.options.get('check', False))]
         passed = [test.name for test in tlist if (test.status is PASSED and test not in ncs)]
         bad = self.badlist
 
-        print ""
-        print "ATS SUMMARY3 Complete Test Summary"
-
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
         total_failures = 0
 
-        #if invalid:
-        print "   INVALID:  %d %s" % (len(invalid) + len(bad), ', '.join(bad + invalid))
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
         total_failures = total_failures + len(invalid) +len(bad)
-        #if batched:
-        print "   BATCHED:  %d" % len(batched)
-        #if filtered:
-        print "   FILTERED: %d" % len(filtered)
-        #if skipped:
-        print "   SKIPPED:  %d" % len(skipped)
-        #if failed:
-        print "   FAILED:   %d" % len(failed)
-        total_failures = total_failures + len(failed)
-        #if timedout:
-        print "   TIMEDOUT: %d" % len(timedout)
-        total_failures = total_failures + len(timedout)
-        #if halted:
-        print "   HALTED:   %d" % len(halted)
-        total_failures = total_failures + len(halted)
-        #if lsferror:
-        print "   LSFERROR: %d" % len(lsferror)
-        #if expected:
-        print "   EXPECTED: %d" % len(expected)
-        #if running:
-        print "   RUNNING:  %d" % len(running)
-        #if passed:
-        print "   PASSED:   %d" % len(passed)
-        #if ncs:
-        print "   NCS:      %d" % len(ncs)
-
-        print "   ATS Summary3 returning %d total failure" % total_failures
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        total_failures += len(failed)
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        total_failures += len(timedout)
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        total_failures += len(halted)
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
+        tlist   =  [t for t in self.testlist if t.options.get('report', True)]
         return total_failures
 
 
@@ -508,7 +500,6 @@ See manual for discussion of these arguments.
         self.testlist.append(testobj)
 #        if not self.groups.has_key(testobj.groupNumber):
 #            self.groups[testobj.groupNumber] = testobj.group
-
 # ambyr
         #print 'SAD DEBUG BEGIN'
         #print clas
@@ -527,8 +518,7 @@ See manual for discussion of these arguments.
 
         if testobj.status in (CREATED, BATCHED):
             if self.machine.name not in SYSTEMS:
-                msg =  'Machine %s not in test SYSTEM list %s' % \
-                   (self.machine.name, repr(SYSTEMS))
+                msg = f'Machine {self.machine.name} not in test SYSTEM list {repr(SYSTEMS)}'
                 testobj.set(FILTERED, msg)
                 return testobj
 
@@ -546,22 +536,16 @@ See manual for discussion of these arguments.
 
             # 2019-06-28 Sad added filter on the number of nodes requested for the test vs allocated for testing
 
-            if testobj.options.has_key('nn'):
-                my_nn = testobj.options.get('nn')
-            else:
-                my_nn = -1
-
+            my_nn = testobj.options.get('nn') if testobj.options.has_key('nn') else -1
             # print "SAD DEBUG my_nn = %d self.machine.numNodes=%d\n" % (my_nn,self.machine.numNodes)
             if my_nn > self.machine.numNodes:
                 testobj.set(FILTERED,
                     "Number of nodes requested %d exceeds %d"% (my_nn, self.machine.numNodes))
                 return testobj
 
-            # process filters
-            unmatched = self.find_unmatched(testobj)
-            if unmatched:
+            if unmatched := self.find_unmatched(testobj):
                 if 'UltraCheck107' not in testobj.name:
-                    testobj.set(FILTERED, "Does not satisfy: %s" % unmatched)
+                    testobj.set(FILTERED, f"Does not satisfy: {unmatched}")
 
         log(testobj.status, "#%4d"% testobj.serialNumber, testobj.name, 
             testobj.message, echo=self.verbose)
@@ -587,10 +571,7 @@ We immediately make sure each input file exists and is readable.
             t = abspath(input_file)
             dir, filename = os.path.split(t)
             name, e = os.path.splitext(filename)
-            if e: 
-                namelist = [t]
-            else:
-                namelist = [t, t+'.ats', t+'.py']
+            namelist = [t] if e else [t, f'{t}.ats', f'{t}.py']
             for t1 in namelist:
                 try:
                     f = open(t1, 'r')
@@ -598,16 +579,15 @@ We immediately make sure each input file exists and is readable.
                 except IOError:
                     pass
             else:
-                log.fatal_error('Cannot open %s.' % t)
+                log.fatal_error(f'Cannot open {t}.')
             f.close()
             files.append(t1)
-            
+
         log("Input ok. Now collect the tests.")
-        
+
         # Now collect the tests.   
         for t in files:
             self.source(t)
-
 # Stop the execution of ats when the first INVALID test is found unless option --okInvalid.
         log.indent()
         found = False
@@ -625,7 +605,6 @@ We immediately make sure each input file exists and is readable.
             log('NOTE: Invalid tests or files', echo = True)
             if not configuration.options.okInvalid:
                 log.fatal_error("Fix invalid tests or rerun with --okInvalid.")
-
 # Make sure that every test has distinct name
         testnames = [t.name.lower() for t in self.testlist]
         for i in range(len(testnames)):
@@ -638,7 +617,6 @@ We immediately make sure each input file exists and is readable.
                         t = self.testlist[j]
                         t.name += ("#%d" % count)
                         testnames[j] = t.name.lower()
-
 # Add parents to each test's waitlist.
         for t in self.testlist:
             if t.status is CREATED:
@@ -649,8 +627,8 @@ We immediately make sure each input file exists and is readable.
         log.leading = ''
         log("------------------ Input complete --------", echo=True)
         echo =  configuration.options.verbose or \
-                debug() or \
-                configuration.options.skip
+                    debug() or \
+                    configuration.options.skip
         for t in self.testlist:
             log(repr(t), echo=echo)
             
@@ -700,7 +678,7 @@ to allow user a chance to add options and examine results of option parsing.
     def preprocess(self):
         "Call beforeRunRoutines."
         for r in self.beforeRunRoutines:
-            log(" --------- Calling %s --------" % r.__name__, echo=True)
+            log(f" --------- Calling {r.__name__} --------", echo=True)
             try:
                 r(self)
             except Exception as details:
@@ -713,7 +691,7 @@ to allow user a chance to add options and examine results of option parsing.
     def postprocess(self):
         "Call onExitRoutines."
         for r in self.onExitRoutines:
-            log(" --------- Calling %s --------" % r.__name__, echo=True)
+            log(f" --------- Calling {r.__name__} --------", echo=True)
             try:
                 r(self)
             except Exception as details:
@@ -735,9 +713,9 @@ to allow user a chance to add options and examine results of option parsing.
         self.inputFiles = configuration.inputFiles
         self.machine = configuration.machine
         self.batchmachine = configuration.batchmachine
-        
+
         if configuration.options.nobatch:
-            self.batchmachine = None 
+            self.batchmachine = None
         self.verbose = configuration.options.verbose or debug()
         log.echo = self.verbose
         self.started = datestamp(long=1)
@@ -748,13 +726,10 @@ to allow user a chance to add options and examine results of option parsing.
         pat1 = re.compile(r'^([^\'].*)\'$')
         pat2 = re.compile(r'^([^\"].*)\"$')
         for a in configuration.options.glue:
-            if pat1.search(a) or pat2.search(a):
-                a1 = a
-            else:
-                a1 = a.strip('"').strip("'")
-            exec('AtsTest.glue(%s)' % a1)
+            a1 = a if pat1.search(a) or pat2.search(a) else a.strip('"').strip("'")
+            exec(f'AtsTest.glue({a1})')
         if configuration.options.level:
-            self.filter("level<= %s" % configuration.options.level)
+            self.filter(f"level<= {configuration.options.level}")
 
     def firstBanner(self):
         "Write the opening banner."     
@@ -792,14 +767,16 @@ to allow user a chance to add options and examine results of option parsing.
     def core(self):
         "This is the 'guts' of ATS."
 
-        if configuration.SYS_TYPE == "toss_3_x86_64":
-            if configuration.options.bypassSerialMachineCheck == False:
-                log("**********************************************************************************", echo=True)
-                log("*** This is a serial machine --- Do not use ATS on more than 1 node here!      ***", echo=True)
-                log("***                                                                            ***", echo=True)
-                log("*** Use ATS option  --bypassSerialMachineCheck if you promise to run on 1 Node ***", echo=True)
-                log("**********************************************************************************", echo=True)
-                sys.exit(-1)
+        if (
+            configuration.SYS_TYPE == "toss_3_x86_64"
+            and configuration.options.bypassSerialMachineCheck == False
+        ):
+            log("**********************************************************************************", echo=True)
+            log("*** This is a serial machine --- Do not use ATS on more than 1 node here!      ***", echo=True)
+            log("***                                                                            ***", echo=True)
+            log("*** Use ATS option  --bypassSerialMachineCheck if you promise to run on 1 Node ***", echo=True)
+            log("**********************************************************************************", echo=True)
+            sys.exit(-1)
 
         # Phase 1 -- collect the tests
         errorOccurred = False
@@ -848,7 +825,7 @@ to allow user a chance to add options and examine results of option parsing.
         self.preprocess()
 
         # Phase 2 -- dispatch the batch tests
-        
+
         if self.batchmachine and batchTests:
             if configuration.options.skip:
                 log("Skipping execution due to --skip")
@@ -887,24 +864,24 @@ to allow user a chance to add options and examine results of option parsing.
                 errorOccured = True
             if errorOccurred:
                 return
-            
+
             try:
                 self.run(interactiveTests)
             except AtsError:
                 log(traceback.format_exc(), echo=True)
                 log("ATS error. Removing running jobs....", echo=True)
                 dieDieDie = True
-    
+
             except KeyboardInterrupt:
                 dieDieDie = True
                 log("Keyboard interrupt. Removing running jobs....", echo=True)
-    
+
         if dieDieDie:
             time.sleep(3)   
             for test in self.testlist:
                 if (test.status is RUNNING):
                     self.machine.kill(test)
-            
+
         self.machine.quit() #machine shutdown / cleanup
 
         # Phase 4 -- Continuation file         
@@ -1082,9 +1059,8 @@ dependents_serial contain the serial numbers of the relevant tests.
         if not os.path.isabs(filename):
             filename = os.path.join(log.directory, filename)
         log("Saving state to ", filename, echo=True)
-        f = open(filename, 'w')
-        self.printResults(file = f)
-        f.close()
+        with open(filename, 'w') as f:
+            self.printResults(file = f)
         self.saveResultsAsXml(logdir=log.directory)
 
     def saveResultsAsXml(self, file=sys.stdout, logdir=None):
@@ -1100,29 +1076,28 @@ dependents_serial contain the serial numbers of the relevant tests.
         halted =   [test for test in self.testlist if (test.status is HALTED)]
         lsferror = [test for test in self.testlist if (test.status is LSFERROR)]
 
-        outf = open(filename,'w')
-        outf.write('<?xml version="1.0" encoding="UTF-8"?> <testsuites>')
-        outf.write('    <testsuite name="nightly">')
-        for test in passed:
-            writePassedTestCase(outf,test)
-        for test in failed:
-            writeFailedCodeTestCase(outf,test,log.directory)
-        for test in timedout:
-            # There should be logs for timedout tests so this may need more specific output
-            writeStatusTestCase( outf, test, "TIMEDOUT")
-        for test in invalid:
-            # No logs for invalid test cases - just write a message
-            writeStatusTestCase( outf, test, "INVALID")
-        for test in halted:
-            # Are there logs for halted test cases?  I think we need to write a message instead.
-            writeStatusTestCase( outf, test, "HALTED")
-        for test in lsferror:
-            writeStatusTestCase( outf, test, "LSFERROR")
+        with open(filename,'w') as outf:
+            outf.write('<?xml version="1.0" encoding="UTF-8"?> <testsuites>')
+            outf.write('    <testsuite name="nightly">')
+            for test in passed:
+                writePassedTestCase(outf,test)
+            for test in failed:
+                writeFailedCodeTestCase(outf,test,log.directory)
+            for test in timedout:
+                # There should be logs for timedout tests so this may need more specific output
+                writeStatusTestCase( outf, test, "TIMEDOUT")
+            for test in invalid:
+                # No logs for invalid test cases - just write a message
+                writeStatusTestCase( outf, test, "INVALID")
+            for test in halted:
+                # Are there logs for halted test cases?  I think we need to write a message instead.
+                writeStatusTestCase( outf, test, "HALTED")
+            for test in lsferror:
+                writeStatusTestCase( outf, test, "LSFERROR")
 
-        # Finish off the xml file
-        outf.write('    </testsuite>')
-        outf.write("</testsuites>")
-        outf.close()        
+            # Finish off the xml file
+            outf.write('    </testsuite>')
+            outf.write("</testsuites>")        
 
     def printResults(self, file=sys.stdout):
         "Print state to file, formatting items with repr"

@@ -120,11 +120,11 @@ def execute(cmd_line, file_name=None, verbose=False):
   """
   Function to run a command and display output to screen.
   """
-  log('Execute command line: %s' % cmd_line, echo = verbose)
+  log(f'Execute command line: {cmd_line}', echo = verbose)
 
   if file_name is not None:
     execute_ofp = open(file_name, 'w')
-    execute_ofp.write( 'Command: %s' % cmd_line)
+    execute_ofp.write(f'Command: {cmd_line}')
 
   process = Popen(cmd_line, shell=True, stdout=PIPE, stderr=STDOUT)
 
@@ -268,20 +268,18 @@ def makeSymLink( path, target ):
 ####################################################################################
 
 def getGroupID( group_name ):
-  gid = grp.getgrnam( group_name )[2]
-  return gid
+  return grp.getgrnam( group_name )[2]
   
 ####################################################################################
 
 def readFile(filename):
-    lines = []
-    if os.path.isfile(filename):
-        ifp = open(filename,  'r')
-        lines = ifp.readlines()
-        ifp.close()
+  lines = []
+  if os.path.isfile(filename):
+    with open(filename,  'r') as ifp:
+      lines = ifp.readlines()
 #    else:
 #        raise Exception("\n\n\t%s file does not exist." % (filename) )
-    return lines 
+  return lines 
 
 def findKeyVal(lines, key, sep):
     value = ""
@@ -298,12 +296,9 @@ def findKeyVal(lines, key, sep):
 ####################################################################################
 def setUrlFromPath( path ):
   lc_server_path = '/usr/global/web-pages/lc/www/'
-  if path.startswith( lc_server_path ):
-    url = path.replace( lc_server_path, 'https://rzlc.llnl.gov/')
-  else:
-    url = 'file://' + os.path.abspath(path)
-    
-  return url
+  return (path.replace(lc_server_path, 'https://rzlc.llnl.gov/')
+          if path.startswith(lc_server_path) else
+          f'file://{os.path.abspath(path)}')
   
 ####################################################################################
 def setDirectoryPermissions( dir, groupID):
@@ -311,7 +306,7 @@ def setDirectoryPermissions( dir, groupID):
     os.chown( dir, -1, groupID)
     os.chmod( dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_ISUID | stat.S_ISGID )
   except:
-    log('Warning - failed to set permissions on directory ' + dir, echo=True)
+    log(f'Warning - failed to set permissions on directory {dir}', echo=True)
 
 
 def setFilePermissions( file, groupID):
@@ -319,7 +314,7 @@ def setFilePermissions( file, groupID):
     os.chown( file, -1, groupID)
     os.chmod( file, stat.S_IREAD | stat.S_IWRITE | stat.S_IRGRP | stat.S_IWGRP )
   except:
-    log('Warning - failed to set permissions on file ' + file, echo=True)
+    log(f'Warning - failed to set permissions on file {file}', echo=True)
 
 ####################################################################################
 # Routine to delete sandbox dirs in the current dir

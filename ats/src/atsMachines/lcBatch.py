@@ -166,12 +166,11 @@ def getBaseHostName(hostname):
     host = realHostName(hostname)
     # get non-digit part of node name
     wordpat = re.compile('(^[a-zA-Z_]*)(\d*)').search
-    basehost = wordpat(host).group(1)
-    return basehost
+    return wordpat(host).group(1)
 
 
 def checkJob(jobID,basenode=None):
-    cmd = 'checkjob %s'%str(jobID)
+    cmd = f'checkjob {str(jobID)}'
     host = socket.gethostname().split('.')[0]
     basehost = getBaseHostName(host)
     node2runCMD = basehost
@@ -191,7 +190,7 @@ def checkJob(jobID,basenode=None):
             elif line.startswith('job'):
                 key,jid = line.split()
                 if jobID != jid:
-                    msg = 'jobID=%s; jid from checkjob command=%s.'%(jobID,jid)
+                    msg = f'jobID={jobID}; jid from checkjob command={jid}.'
                     #print 'ERROR: %s Terminated'%msg
                     return job
                 job['jobID'] = jid
@@ -218,9 +217,9 @@ def checkJob(jobID,basenode=None):
             elif line.startswith('Creds'):
                 lst = line.split()
                 for word in lst:
-                    if word.startswith('Creds') or word.startswith('qos'):
-                        pass
-                    else:
+                    if not word.startswith('Creds') and not word.startswith(
+                        'qos'
+                    ):
                         # user:name1, group:name2 and account:name3 
                         key,val = word.split(':')
                         job[key] = val
@@ -238,10 +237,6 @@ def checkJob(jobID,basenode=None):
                 job['SubmitDateTime'] = datetime
             elif line.startswith('IWD'):
                 j,job['testdir'] = line.split()
-            else:
-                # ignore for now
-                pass
-
     return job
 
 def checkFile(file):
@@ -282,9 +277,8 @@ def checkStatusFile(statusFilename):
     # statusFilename exists and has a value 
     # --------------------------------------
     if ccode == 0:
-        fp = open(statusFilename)
-        stat = int(fp.read())
-        fp.close()
+        with open(statusFilename) as fp:
+            stat = int(fp.read())
         if stat == 0:
             # PASS
             newStatus = atsut.PASSED
@@ -293,12 +287,12 @@ def checkStatusFile(statusFilename):
             newStatus = atsut.FAILED
         else:
             # stat not in [0,1]
-            m = '%s has value != 0 (PASS) or 1 (FAIL)'%statname
+            m = f'{statname} has value != 0 (PASS) or 1 (FAIL)'
             #print 'ERROR: %s: stat=%d'%(m,stat)
             #if debug: printObjInfo(self,msg=m)
             newStatus = atsut.FAILED
     else:	
         newStatus = None
-    
+
     return newStatus
 

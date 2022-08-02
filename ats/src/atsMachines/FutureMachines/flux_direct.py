@@ -76,7 +76,7 @@ def update_test_status(json_response, arg, errnum):
 # class FluxDirect (machines.Machine):
 class FluxDirect (lcMachines.LCMachineCore):
     def __init__(self, name, npMaxH):
-        self.submitted = dict()
+        self.submitted = {}
         self.fh = flux.Flux()
         jsc.notify_status(self.fh, update_test_status, self)
         # self.broker_thread = thread.start_new_thread(run_broker, (self.fh,))
@@ -124,7 +124,7 @@ class FluxDirect (lcMachines.LCMachineCore):
         return "FluxDirect: %d nodes, %d processors per node." % (
             self.numNodes, self.npMax)
 
-    def calculateCommandList(self, test): 
+    def calculateCommandList(self, test):
         """Prepare for run of executable using a suitable command. First we get the plain command
          line that would be executed on a vanilla serial machine, then we modify it if necessary
          for use on this machines.
@@ -134,7 +134,13 @@ class FluxDirect (lcMachines.LCMachineCore):
         test.cpus_per_task = 1
         commandList        = self.calculateBasicCommandList(test)
         timeNow            = time.strftime('%H%M%S',time.localtime())
-        test.jobname       = "t%d_%d%s%s" % (np, test.serialNumber, test.namebase[0:50], timeNow)
+        test.jobname = "t%d_%d%s%s" % (
+            np,
+            test.serialNumber,
+            test.namebase[:50],
+            timeNow,
+        )
+
         minNodes           = np / self.npMax + (np % self.npMax != 0 )
 
         num_nodes = test.options.get('nn', -1)
@@ -154,42 +160,42 @@ class FluxDirect (lcMachines.LCMachineCore):
            If so return ''.  Otherwise return the reason it cannot be run here.
         """
         np = max(test.np, 1)
-        if np > self.cores:   
-            return "Too many processors needed (%d)" % np
-
-        return ''
+        return "Too many processors needed (%d)" % np if np > self.cores else ''
 
     def startRun(self, test):
         """For interactive test object, launch the test object.
            Return True if able to start the test.
         """
         self.runOrder += 1
-        test.runOrder = self.runOrder 
+        test.runOrder = self.runOrder
         # TODO: consider incorporating helper into flux for this
         if test.commandList == ['not run']:
             test.commandList = self.calculateBasicCommandList(test)
         jobspec = {
-                'nnodes': 0, # TODO: this should be 0, or something to say "I don't care" but that's causing issues
-                'ntasks': max(test.np, 1),
-                'ncores': max(test.np, 1),
-                'cmdline': test.commandList,
-                'environ': dict(os.environ), # TODO: add environment updating stuff
-                'cwd': test.directory,
-                'walltime': test.timelimit.value,
-                'output': {
-                    'files': {
-                        'stdout': test.outname,
-                        'stderror': test.errname if not (hasattr(test, 'combineOutput') and test.combineOutput) else test.outname,
-                    }
-                },
+            'nnodes': 0,
+            'ntasks': max(test.np, 1),
+            'ncores': max(test.np, 1),
+            'cmdline': test.commandList,
+            'environ': dict(os.environ),
+            'cwd': test.directory,
+            'walltime': test.timelimit.value,
+            'output': {
+                'files': {
+                    'stdout': test.outname,
+                    'stderror': test.outname
+                    if (hasattr(test, 'combineOutput') and test.combineOutput)
+                    else test.errname,
+                }
+            },
             'opts': {
-                'ntasks' : max(test.np, 1),
-                'cores-per-task' : 1,
+                'ntasks': max(test.np, 1),
+                'cores-per-task': 1,
             },
         }
+
         new_ld_library_path = "/opt/ibm/spectrum_mpi/lib/pami_port:/opt/ibm/spectrum_mpi/lib:/opt/ibm/spectrum_mpi/lib:/opt/mellanox/hcoll/lib"
         if os.environ['LD_LIBRARY_PATH']:
-            new_ld_library_path += ":{}".format(os.environ['LD_LIBRARY_PATH'])
+            new_ld_library_path += f":{os.environ['LD_LIBRARY_PATH']}"
         jobspec['environ'] = {k: v for k, v in jobspec['environ'].iteritems() if k.split('_')[0] not in ('JSM', 'OMPI', 'PMIX', 'ENVIRONMENT')}
         jobspec['environ'].update({"OMPI_MCA_osc": "pt2pt",
                                    "OMPI_MCA_pml": "yalla",
@@ -204,12 +210,14 @@ class FluxDirect (lcMachines.LCMachineCore):
         jobspec['environ'].pop('PMIX_SERVER_URI2', None)
         # print jobspec
         job_response = self.fh.rpc_send('job.submit', jobspec)
-        print job_response
+        self.runOrder += 1
         if job_response is None:
             raise RuntimeError("RPC response invalid")
         if job_response.get('errnum', None) is not None:
-            raise RuntimeError("Job creation failed with error code {}".format(
-                job_response['errnum']))
+            raise RuntimeError(
+                f"Job creation failed with error code {job_response['errnum']}"
+            )
+
         test.job_id = job_response['jobid']
         test.kvs_path = job_response['kvs_path']
         test.status = RUNNING # was BATCHED, not true, but made prototyping easier, re-investigate this later
@@ -235,9 +243,7 @@ class FluxDirect (lcMachines.LCMachineCore):
         try:
             self.fh.reactor_run(self.fh.get_reactor(), self.fh.REACTOR_ONCE)
         except EnvironmentError as e:
-            if e.errno == errno.EAGAIN:
-                pass
-            else:
+            if e.errno != errno.EAGAIN:
                 raise e
         # super(FluxDirect, self).checkRunning()
 

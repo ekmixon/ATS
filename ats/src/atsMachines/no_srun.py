@@ -31,11 +31,7 @@ class noSrunMachine (machines.Machine):
             if 'bin/ats ' in aline:
                 foundAts= True
 
-        if foundAts:
-            # Found ats running.
-            return 1
-        # NO ats running.
-        return 0
+        return 1 if foundAts else 0
 
 
     def getNumberOfProcessors(self):
@@ -83,7 +79,6 @@ class noSrunMachine (machines.Machine):
         parser.add_option("--numNodes", action="store", type="int", dest='numNodes',
             default = 1,
             help="Number of nodes to use")
-        pass
 
     def getResults(self):
         """I'm not sure what this function is supposed to do"""

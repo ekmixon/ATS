@@ -38,7 +38,7 @@ class _StatusCode:
         return self.name != other.name
 
     def __repr__(self):
-        return "StatusCode(%s)" % repr(self.name)
+        return f"StatusCode({repr(self.name)})"
 
 def StatusCode(name):
    "Return a status code so that they compare with 'is'. "

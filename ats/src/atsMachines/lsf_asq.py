@@ -49,7 +49,7 @@ class lsfMachine (machines.Machine):
     debugClass = False
 
     def init (self):
-        
+
         self.runningWithinBsub = True
 
         # Detect how many cores have been reserved for the OS, default it to 2 if not detectable
@@ -81,7 +81,7 @@ class lsfMachine (machines.Machine):
         #print "DEBUG lsfMachine init self.runningWithinBsub is %r" % self.runningWithinBsub
 
         self.nodesInUse = [0] * self.numNodes
-    
+
         super(lsfMachine, self).init()
 
     def checkForAtsProc(self):
@@ -97,11 +97,7 @@ class lsfMachine (machines.Machine):
             if 'bin/ats ' in aline:
                 foundAts= True
 
-        if foundAts:
-            # Found ats running.
-            return 1
-        # NO ats running.
-        return 0
+        return 1 if foundAts else 0
 
     def getNumberOfProcessors(self):
         # Maximum number of processors available. Number of nodes times
@@ -228,7 +224,6 @@ class lsfMachine (machines.Machine):
         parser.add_option("--numNodes", action="store", type="int", dest='numNodes',
             default = 1,
             help="Number of nodes to use")
-        pass
 
     def getResults(self):
         """I'm not sure what this function is supposed to do"""

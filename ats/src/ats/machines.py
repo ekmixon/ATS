@@ -45,9 +45,8 @@ class MachineCore(object):
         elif self.hardLimit:
             if options.npMax > 0:
                 self.numberTestsRunningMax = options.npMax
-        else:
-            if options.npMax > 0:
-                self.numberTestsRunningMax = options.npMax
+        elif options.npMax > 0:
+            self.numberTestsRunningMax = options.npMax
 
     def checkForTimeOut(self, test):
         """ Check the time elapsed since test's start time.  If greater
@@ -464,36 +463,33 @@ call noteEnd for machine-specific part.
         results = test.getResults()
 
         commandLine = self.__results('commandLine', '', results, test.options)
-        print >>test.outhandle, magic, 'commandLine =', commandLine
-
-        if hasattr(test, 'rs_filename'):
-            if os.path.isfile(test.rs_filename):
-                myfile = open(test.rs_filename, mode='r')
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
+        if hasattr(test, 'rs_filename') and os.path.isfile(test.rs_filename):
+            with open(test.rs_filename, mode='r') as myfile:
                 all_of_it = myfile.read()
-                myfile.close()
-                print >>test.outhandle, magic, 'jsrun_rs =\n', all_of_it
-
+            myfile = open(test.rs_filename, mode='r')
         directory = self.__results('directory', '', results, test.options)
-        print >>test.outhandle, magic, 'directory =', directory
-
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
         executable = self.__results('executable', '', results, test.options)
-        print >>test.outhandle, magic, 'executable =', executable
-
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
         name = self.__results('name', '', results, test.options)
-        print >>test.outhandle, magic, 'name =', name
-
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
         clas = self.__results('clas', '', results, test.options)
-        print >>test.outhandle, magic, 'clas =', clas
-
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
         np = self.__results('np', 1, results, test.options)
-        print >>test.outhandle, magic, 'np =', np
-
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
         script = self.__results('script', '', results, test.options)
-        print >>test.outhandle, magic, 'script =', script
-
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
         testpath = self.__results('testpath', '', results, test.options)
-        print >>test.outhandle, magic, 'testpath =', testpath, '\n'
-
+        # Prepend information about the test to its standard output
+        magic = test.options.get('magic', '#ATS:')
         test.outhandle.flush()
         os.fsync(test.outhandle.fileno())
 
@@ -815,7 +811,7 @@ then modify if necessary.
         terminal(len(self.running), "tests running on", self.numberTestsRunning, 
               "of", self.numberTestsRunningMax, "processors.")
 
-    def canRun(self, test): 
+    def canRun(self, test):
         """
 A child will almost always replace this method.
 
@@ -824,9 +820,7 @@ available?  If so return ''.
 
 Otherwise return the reason it cannot be run here.
 """
-        if test.np > 1:   #generic machine sequential only
-            return "Too many processors needed (%d)" % test.np
-        return ''
+        return "Too many processors needed (%d)" % test.np if test.np > 1 else ''
 
     def canRunNow(self, test): 
         """

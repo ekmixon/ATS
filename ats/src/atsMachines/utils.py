@@ -222,14 +222,14 @@ def removeFromUsedTotalDicNoSrun(inNodeAvailDic, inNodeStepNumDic, inMaxProcsPer
     aLen = len(inNodeAvailDic)
 
     while amountLeft > 0:
-      aStep= 0
-      for ii in range(0, aLen):
-        tempToDelete= min(1, inNodeAvailDic[ stepNodeDic[str( aStep )] ])
-        inNodeAvailDic[ stepNodeDic[str( aStep )] ] -= tempToDelete
-        amountLeft -= tempToDelete
-        aStep = (aStep + 1) % aLen
-        if amountLeft<=0:
-            break
+        aStep= 0
+        for _ in range(aLen):
+            tempToDelete= min(1, inNodeAvailDic[ stepNodeDic[str( aStep )] ])
+            inNodeAvailDic[ stepNodeDic[str( aStep )] ] -= tempToDelete
+            amountLeft -= tempToDelete
+            aStep = (aStep + 1) % aLen
+            if amountLeft<=0:
+                break
 
     #print "SAD DEBUG removeFromUsedTotalDicNoSrun End inNodeAvailDic follows"
     #print inNodeAvailDic
@@ -242,7 +242,7 @@ def removeFromUsedTotalDicNoSrun(inNodeAvailDic, inNodeStepNumDic, inMaxProcsPer
 # Used if the -N and -r options are being used
 #
 #------------------------------------------------------------------------------
-def removeFromUsedTotalDic (inNodeAvailDic, inNodeStepNumDic, inMaxProcsPerNode, inFirstStep, inAmountToDelete, inNumberOfNodesNeeded, inNumNodesToUse, inSrunRelativeNode, inStepId, inNodeList):
+def removeFromUsedTotalDic(inNodeAvailDic, inNodeStepNumDic, inMaxProcsPerNode, inFirstStep, inAmountToDelete, inNumberOfNodesNeeded, inNumNodesToUse, inSrunRelativeNode, inStepId, inNodeList):
 
     from operator import itemgetter
 
@@ -251,14 +251,14 @@ def removeFromUsedTotalDic (inNodeAvailDic, inNodeStepNumDic, inMaxProcsPerNode,
     amountLeft= max(inAmountToDelete, 1)
 
     while amountLeft > 0:
-      aStep= inFirstStep
-      for ii in range(0, inNumNodesToUse):
-        tempToDelete= min(1, inNodeAvailDic[ stepNodeDic[str( aStep )] ])
-        inNodeAvailDic[ stepNodeDic[str( aStep )] ] -= tempToDelete
-        amountLeft -= tempToDelete  
-        aStep = (aStep + 1) % len(inNodeStepNumDic)
-        if amountLeft<=0:
-            break
+        aStep= inFirstStep
+        for _ in range(inNumNodesToUse):
+            tempToDelete= min(1, inNodeAvailDic[ stepNodeDic[str( aStep )] ])
+            inNodeAvailDic[ stepNodeDic[str( aStep )] ] -= tempToDelete
+            amountLeft -= tempToDelete
+            aStep = (aStep + 1) % len(inNodeStepNumDic)
+            if amountLeft<=0:
+                break
 
     return inNodeAvailDic
 
@@ -283,15 +283,13 @@ def findAvailableStep(inNodeList, inNodeAvailTotalDic, inNodeStepNumDic,
 
 #------------------------------------------------------------------------------
 def checkForSrunDefunct(anode):
-    rshCommand= 'rsh ' +  anode + ' ps u'
+    rshCommand = f'rsh {anode} ps u'
     returnCode, runOutput= runThisCommand(rshCommand)
-   
+
     theLines = runOutput.split('\n')
-    for aline in theLines:
-        if 'srun' in aline and 'defunct' in aline:
-            return 1
-    
-    return 0
+    return next(
+        (1 for aline in theLines if 'srun' in aline and 'defunct' in aline), 0
+    )
 
 #------------------------------------------------------------------------------
 #
@@ -316,23 +314,20 @@ def checkForSrunDefunct(anode):
 # tune this routine in the future as well.
 #
 #------------------------------------------------------------------------------
-def usingRshFindTotalProcessorsAvail (inNodeList, inStepNumNodeNameDic, maxProcsPerNode):
-    taskTotal= {}
-    for anode in inNodeList:
-        taskTotal[anode]= 0
+def usingRshFindTotalProcessorsAvail(inNodeList, inStepNumNodeNameDic, maxProcsPerNode):
+    taskTotal = {anode: 0 for anode in inNodeList}
     import time
     time.sleep(1)
     for anode in inNodeList:
-        
-        rshCommand= 'rsh ' +  anode + ' ps -ef | grep $USER | grep -v "ps -ef" | grep -v "/usr/apps/ats.*exec" | grep -v "/usr/gapps/ats.*exec" | grep -v "/bin/csh" | grep -v "/bin/bash" | grep -v " bash" | grep -v "/usr/bin/xterm" | grep -v "/bin/ksh" | grep -v "grep $USER" | grep -v "srun .*label" | grep -v "srun.*defunct" | grep -v "pts/0.*-sh" | grep -v "tee temp" ' 
+
+        rshCommand = (
+            f'rsh {anode}'
+            + ' ps -ef | grep $USER | grep -v "ps -ef" | grep -v "/usr/apps/ats.*exec" | grep -v "/usr/gapps/ats.*exec" | grep -v "/bin/csh" | grep -v "/bin/bash" | grep -v " bash" | grep -v "/usr/bin/xterm" | grep -v "/bin/ksh" | grep -v "grep $USER" | grep -v "srun .*label" | grep -v "srun.*defunct" | grep -v "pts/0.*-sh" | grep -v "tee temp" '
+        )
+
         returnCode, runOutput= runThisCommand(rshCommand)
-        runLines = (line for line in runOutput.split(os.linesep))
-        numProcsUsed = 0
-        for aLine in runLines:
-            #print "DEBUG SAD 346: '%s'" % aLine
-            if (len(aLine) > 10):
-                # print "DEBUG SAD 304 usingRshFindTotalProcessorsAvail I think the following is a test process: \n\t%s" % aLine
-                numProcsUsed += 1
+        runLines = iter(runOutput.split(os.linesep))
+        numProcsUsed = sum(len(aLine) > 10 for aLine in runLines)
         taskTotal[anode]= max(0, maxProcsPerNode - numProcsUsed)
 
     # SAD DEBUGGING LINES FOLLOW
@@ -354,7 +349,7 @@ def getNodeAndStepIdAssociatedWithStepNumberLinux(inMaxStep):
     #--------------------------------------------------
     cmd= "whoami"
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-    
+
     return taskTotal
 
 #------------------------------------------------------------------------------

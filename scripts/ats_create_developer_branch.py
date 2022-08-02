@@ -22,46 +22,48 @@ def error_and_exit(code, messages):
     print("Error: ------------------------------------------------------------------------")
     print("Error:         C R E A T E   D E V E L O P E R   B R A N C H   A B E N D")
     for mess in messages:
-        print("Error: %s" % mess)
+        print(f"Error: {mess}")
     print("Error: ------------------------------------------------------------------------")
     sys.exit(code)
 
 def warning_but_continue(messages):
     print("Warning: ----------------------------------------------------------------------")
     for mess in messages:
-        print("Warning: %s" % mess)
+        print(f"Warning: {mess}")
     print("Warning: ----------------------------------------------------------------------")
 
 def yes_or_no(question, default_to_yes):
     if default_to_yes:
-        print(question + ' (y/n): y')
+        print(f'{question} (y/n): y')
         return True
     while "the answer is invalid":
-        reply = str(input(question+' (y/n): ')).lower().strip()
-        if len(reply) < 1:
+        reply = str(input(f'{question} (y/n): ')).lower().strip()
+        if not reply:
             continue
         if reply[0] == 'y':
             return True
         if reply[0] == 'n':
             return False
 
-def runcommand_die_on_err (cmd):
-    print("Executing: %s" % cmd)
+def runcommand_die_on_err(cmd):
+    print(f"Executing: {cmd}")
     proc = subprocess.Popen(cmd,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
                             shell=True,
                             universal_newlines=True)
     std_out, std_err = proc.communicate()
-    
+
     if proc.returncode != 0:
-        messages = []       
-        messages.append("%s" % cmd)
-        messages.append("failed with return code %i" % proc.returncode)
-        messages.append("%s" % std_out)
-        messages.append("%s" % std_err)
+        messages = [
+            f"{cmd}",
+            "failed with return code %i" % proc.returncode,
+            f"{std_out}",
+            f"{std_err}",
+        ]
+
         error_and_exit(proc.returncode, messages)
-        
+
     return proc.returncode, std_out, std_err
 
 def parse_arguments(args):

@@ -9,8 +9,8 @@ execfile('src/ats/version.py')
 #
 # -----------------------------------------------------------------------------
 codename = 'ats'
-f = open(codename, 'w')
-driverscript = """#!%s/bin/python
+with open(codename, 'w') as f:
+    driverscript = """#!%s/bin/python
 import sys
 
 try:
@@ -23,16 +23,15 @@ except ImportError:
 result = ats.manager.main()
 sys.exit(result)
 """ % sys.exec_prefix
-print >>f, driverscript
-f.close()
+    import sys, os, shutil, glob
 os.chmod(codename, 7*64 + 7*8 + 5)
 
 # -----------------------------------------------------------------------------
 # write ats3 script
 # -----------------------------------------------------------------------------
 codename3 = 'ats'
-f = open(codename3, 'w')
-driverscript = """#!%s/bin/python
+with open(codename3, 'w') as f:
+    driverscript = """#!%s/bin/python
 import sys
 import ats
 
@@ -42,8 +41,7 @@ return_code = ats.manager._summary3()
 
 sys.exit(return_code)
 """ % sys.exec_prefix
-print >>f, driverscript
-f.close()
+    import sys, os, shutil, glob
 os.chmod(codename3, 7*64 + 7*8 + 5)
 
 # -----------------------------------------------------------------------------

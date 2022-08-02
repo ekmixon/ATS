@@ -200,10 +200,7 @@ class SlurmProcessorScheduled (lcMachines.LCMachineCore):
 
         temp_uname = os.uname()
         host = temp_uname[1]
-        the_partition = 'pdebug'
-        if host.startswith('rzwhamo'):
-            the_partition = 'nvidia'
-
+        the_partition = 'nvidia' if host.startswith('rzwhamo') else 'pdebug'
         "Add options needed on this machine."
         parser.add_option("--partition", action="store", type="string", dest='partition', 
             default = the_partition,

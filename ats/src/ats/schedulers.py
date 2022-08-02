@@ -29,13 +29,13 @@ class StandardScheduler (object):
         import configuration
         machine = configuration.machine
         self.verbose = configuration.options.verbose or debug() or \
-                       configuration.options.skip
+                           configuration.options.skip
         self.schedule = AtsLog(directory=log.directory, name='atss.log', 
             logging=True, echo=False)
-        
+
         for t in interactiveTests:
             waitOnMe = [x for x in interactiveTests if t in x.waitUntil]
-            t.totalPriority += sum([w.priority for w in waitOnMe])
+            t.totalPriority += sum(w.priority for w in waitOnMe)
         
     def load(self, interactiveTests): 
         """Initialize scheduler with a list of interactive tests to run from manager """
@@ -54,7 +54,7 @@ class StandardScheduler (object):
         self.schedule("Priority", "Priority", "Number", "Number", "Name")
         for t in chain(*self.groups):
             msg = "%8d %8d %6d %6d %s" % \
-                  (t.totalPriority, t.priority, t.serialNumber, t.group.number, t.name)
+                      (t.totalPriority, t.priority, t.serialNumber, t.group.number, t.name)
             self.schedule(msg)
         return len(self.groups) > 0
 
@@ -69,7 +69,7 @@ class StandardScheduler (object):
         machine.checkRunning()
         if machine.remainingCapacity() == 0:
             return True
-            
+
         # It is possible that a job can be started. Try to do so.
         # Note that this is not certain; for example, all waiting jobs have np = 2 but only one
         # processor available, so nothing is eligible.
@@ -88,35 +88,17 @@ class StandardScheduler (object):
         # find out if we need to be called again, as cheaply as possible.
         if machine.numberTestsRunning > 0:
             return True
-        for t in chain(*self.groups):
-            if t.status is CREATED:
-                return True
-        else:
-            return False
+        return any(t.status is CREATED for t in chain(*self.groups))
 
     def isWaiting(self, test):
         "is test forced to wait for another?"
-        #print "DEBUG isWaiting invoked"
-        for t in test.waitUntil:
-            if t.status in (CREATED, RUNNING):
-                #print "DEBUG isWaiting return True"
-                return True
-        #print "DEBUG isWaiting return False"
-        return False
+        return any(t.status in (CREATED, RUNNING) for t in test.waitUntil)
 
     def isBlocked(self, test):
         "is test prevented from running right now due to group/directory issues?"
         #print "DEBUG isBlocked invoked"
         d = test.block
-        if not d:
-            #print "DEBUG isBlocked returning False 100"
-            return False
-        # check if the directory is blocked
-        if d in self.blocks:
-            # check if another group is blocking
-            if test.group.number != self.blocks[d]:
-               return True
-        return False
+        return d in self.blocks and test.group.number != self.blocks[d] if d else False
 
     def addBlock(self, test):
         "Block directories, if any, needed for test and its group."
@@ -126,39 +108,35 @@ class StandardScheduler (object):
         for t in g:
             if t.independent:
                 continue
-            d = t.block
-            if d:
+            if d := t.block:
                 # If any test in the group blocks, add the block (directory)
                 # to the blocking list and mark this group as blocking.
                 g.isBlocking = True
                 self.blocks[d] = g.number
-        if g.isBlocking:
-            if debug():
-                self.schedule("Add blocks", g.number)
+        if g.isBlocking and debug():
+            self.schedule("Add blocks", g.number)
 
     def removeBlock(self, test):
         "Check and possibly remove the block on the group of this test."
         g = test.group
         if not g.isBlocking:
             return
-        
+
         for t in g:
             if t.independent:
                 continue
             if t.status in  (CREATED, RUNNING):
                 return
-        else:
-            # Once the group is complete, remove the blocks (directories)
-            # from the blocking list and unmark this group as blocking.
-            g.isBlocking = False
-            for t in g:
-               if t.independent:
-                   continue
-               d = t.block
-               if d:
-                  if d in self.blocks:
-                     del self.blocks[d]
-            self.schedule("Removed block", g.number)
+        # Once the group is complete, remove the blocks (directories)
+        # from the blocking list and unmark this group as blocking.
+        g.isBlocking = False
+        for t in g:
+            if t.independent:
+                continue
+            if d := t.block:
+                if d in self.blocks:
+                   del self.blocks[d]
+        self.schedule("Removed block", g.number)
     
     def isEligible(self, test):
         """Is test eligible to start now? 
@@ -168,7 +146,7 @@ class StandardScheduler (object):
                (not self.isBlocked(test))  and \
                (not self.isWaiting(test))
     
-    def findNextTest(self): 
+    def findNextTest(self):
         """Return the next test to run, or None if none can be run now. 
            Called by step
            Calls isEligible to check for resource conflicts with running tests.
@@ -185,10 +163,9 @@ class StandardScheduler (object):
             if self.isEligible(t):
                  #print "DEBUG findNextTest 300 return t"
                  return t
-        else:
-            self.reportObstacles()
-            #print "DEBUG findNextTest 500 return None"
-            return None
+        self.reportObstacles()
+        #print "DEBUG findNextTest 500 return None"
+        return None
 
     def logStart(self, test, result):
         "Make appropriate log entries about the test that was started"
@@ -197,40 +174,50 @@ class StandardScheduler (object):
         elif configuration.options.skip:
             m1 = "SKIP "
         else:
-            m1 = ""
-            if self.verbose or debug():
-                m1 = "Failed attempting to start"
+            m1 = "Failed attempting to start" if self.verbose or debug() else ""
         n = len(test.group)
-        my_nn = 0
-        my_nt = 0
-        my_ngpu = 0
         msgHosts=""
-        if hasattr(test, 'rs_nodesToUse'):
-            if len(test.rs_nodesToUse) > 0:
-                msgHosts = "Hosts = [ "
-                for host in test.rs_nodesToUse:
-                    msgHosts += str(host) + " "
-                msgHosts += "]"
-        if hasattr(test, 'num_nodes'):
-            my_nn = test.num_nodes
-        if hasattr(test, 'nt'):
-            my_nt = test.nt
-        if hasattr(test, 'ngpu'):
-            my_ngpu = test.ngpu
-
+        if hasattr(test, 'rs_nodesToUse') and len(test.rs_nodesToUse) > 0:
+            msgHosts = "Hosts = [ "
+            for host in test.rs_nodesToUse:
+                msgHosts += f"{str(host)} "
+            msgHosts += "]"
+        my_nn = test.num_nodes if hasattr(test, 'num_nodes') else 0
+        my_nt = test.nt if hasattr(test, 'nt') else 0
+        my_ngpu = test.ngpu if hasattr(test, 'ngpu') else 0
         if n == 1:
-            if (test.srunRelativeNode >= 0):
-                msg = '%s #%4d r=%d, N=%d-%d, np=%s, %s, %s' % \
-                  (m1, test.serialNumber, test.srunRelativeNode, test.numberOfNodesNeeded, test.numNodesToUse, test.np, time.asctime(), test.name)
-            else:
-                msg = '%s #%4d %s, %s nn=%i, np=%i, nt=%i, ngpu=%i %s' % \
-                  (m1, test.serialNumber, test.name, msgHosts, my_nn, test.np, my_nt, my_ngpu, time.asctime())
-        else:
-            if (test.srunRelativeNode >= 0):
-                msg = '%s #%4d r=%d, N=%d-%d, np=%s, %s, (Group %d #%d) %s' % \
+            msg = (
+                '%s #%4d r=%d, N=%d-%d, np=%s, %s, %s'
+                % (
+                    m1,
+                    test.serialNumber,
+                    test.srunRelativeNode,
+                    test.numberOfNodesNeeded,
+                    test.numNodesToUse,
+                    test.np,
+                    time.asctime(),
+                    test.name,
+                )
+                if (test.srunRelativeNode >= 0)
+                else '%s #%4d %s, %s nn=%i, np=%i, nt=%i, ngpu=%i %s'
+                % (
+                    m1,
+                    test.serialNumber,
+                    test.name,
+                    msgHosts,
+                    my_nn,
+                    test.np,
+                    my_nt,
+                    my_ngpu,
+                    time.asctime(),
+                )
+            )
+
+        elif (test.srunRelativeNode >= 0):
+            msg = '%s #%4d r=%d, N=%d-%d, np=%s, %s, (Group %d #%d) %s' % \
                   (m1, test.serialNumber, test.srunRelativeNode, test.numberOfNodesNeeded, test.numNodesToUse, test.np, test.groupNumber, time.asctime(), test.groupSerialNumber, test.name)
-            else:
-                msg = '%s #%4d (Group %d #%d) %s, %s nn=%i, np=%i, nt=%i, ngpu=%i %s' % \
+        else:
+            msg = '%s #%4d (Group %d #%d) %s, %s nn=%i, np=%i, nt=%i, ngpu=%i %s' % \
                   (m1, test.serialNumber, test.groupNumber, test.groupSerialNumber, test.name, msgHosts, my_nn, test.np, my_nt, my_ngpu, time.asctime())
 
         if configuration.options.showGroupStartOnly:
@@ -256,10 +243,10 @@ Prune group list if a group is finished.
         n = len(g)
         if n == 1:
             msg = "%5s #%4d %s %s"  % \
-                (test.status, test.serialNumber, test.name, test.message)
+                    (test.status, test.serialNumber, test.name, test.message)
         else:
             msg = "%s #%d %s %s Group %d #%d of %d" %  \
-                (test.status, test.serialNumber, test.name, test.message,
+                    (test.status, test.serialNumber, test.name, test.message,
                  g.number, test.groupSerialNumber, n)
         log(msg, echo = echo)
         self.schedule(msg, time.asctime())

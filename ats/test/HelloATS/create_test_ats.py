@@ -11,12 +11,14 @@ def get_file_header():
     if not os.path.isfile(ats_log_checker_path):
         exit(1)
 
-    ofp_header = """import os
+    return (
+        """import os
 glue(independent=True)
 glue(keep=True)
 my_checker = '%s'
-""" % ats_log_checker_path
-    return ofp_header
+"""
+        % ats_log_checker_path
+    )
 
 
 def get_test_lines_generator():
@@ -51,5 +53,3 @@ if __name__ == "__main__":
         for test, testif in zip(TEST_LINES, TESTIF_LINES):
             ofp.write(test)
             ofp.write(testif)
-
-    print "Most Excellent! Created ats test file %s\n" % TEST_ATS
